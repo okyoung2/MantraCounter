@@ -146,7 +146,7 @@ function draw() {
 // ---------- 시작 ----------
 function init() {
   const saved = store.get();
-  if (saved.sens) $('sens').value = Math.min(1.2, Math.max(0.9, saved.sens));
+  if (saved.sens) $('sens').value = Math.min(1.3, Math.max(1.05, saved.sens));
   $('sens-val').textContent = (+$('sens').value).toFixed(2);
   if (saved.target) $('target').value = saved.target;
   $('target-show').textContent = target();
@@ -160,6 +160,9 @@ function init() {
   $('chips').onclick = e => { const n = e.target.dataset?.n; if (!n || mode === 'count') return; $('target').value = n; $('target').dispatchEvent(new Event('input')); };
   $('target').oninput = () => { $('target-show').textContent = target(); store.set({ target: target() }); syncChips(); };
   $('sens').oninput = () => { const v = +$('sens').value; $('sens-val').textContent = v.toFixed(2); store.set({ sens: v }); if (det) det.sens = v; };
+  const nudge = d => { $('sens').value = (Math.round(+$('sens').value * 100) + d) / 100; $('sens').dispatchEvent(new Event('input')); };
+  $('sens-down').onclick = () => nudge(-1);
+  $('sens-up').onclick = () => nudge(1);
   $('rec-btn').onclick = toggleRec;
   $('reset-btn').onclick = resetTakes;
   $('count-btn').onclick = toggleCount;
