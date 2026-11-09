@@ -75,7 +75,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   <section class="card" aria-labelledby="h-tune">
     <h2 id="h-tune">3. 맞춰 보기 (시험용)</h2>
     <p class="hint">선이 아래로 내려가 초록 선 밑으로 들어가면 1회로 셉니다. 주황 선 사이면 '놓침'. 너무 적게 세면 오른쪽(관대하게), 너무 많이 세면 왼쪽(엄격하게)으로 옮겨 보세요.</p>
-    <div class="row"><span>엄격</span><input id="sens" type="range" min="1.0" max="2.5" step="0.05" value="1.4" style="flex:1"><span>관대</span><b id="sens-val">1.40</b></div>
+    <div class="row"><span>엄격</span><input id="sens" type="range" min="0.9" max="1.2" step="0.01" value="1.1" style="flex:1"><span>관대</span><b id="sens-val">1.10</b></div>
     <canvas id="graph" width="600" height="120"></canvas>
     <div class="legend"><span><i style="background:var(--text)"></i>지금 소리와 만트라의 차이</span><span><i style="background:var(--ok)"></i>1회 기준</span><span><i style="background:var(--accent)"></i>놓침 기준</span></div>
     <pre id="log" class="log"></pre>

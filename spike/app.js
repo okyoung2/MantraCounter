@@ -12,7 +12,7 @@ let ctx = null, mode = null, recBuf = [], onSamples = null;
 let takes = [];      // 녹음마다 특징 프레임 배열
 let templates = null, base = null, det = null, wakeLock = null;
 const scores = [];   // 그래프용 최근 점수
-const sounds = { last: new Audio('sounds/last.wav'), done: new Audio('sounds/done.wav') };
+const sounds = { done: new Audio('sounds/done.wav') };
 
 function log(msg) { const el = $('log'); el.textContent = `${new Date().toLocaleTimeString()} ${msg}\n` + el.textContent.slice(0, 3000); }
 function fatal(msg) { $('fatal').textContent = msg; $('fatal').hidden = false; }
@@ -102,7 +102,7 @@ async function toggleCount() {
       log(e.type === 'count' ? `셈 ${e.count}  (차이 ${(e.score / base).toFixed(2)})`
         : `놓침 ${e.miss}  (${e.reason === 'timeout' ? '소리는 났지만 못 찾음' : '애매함 ' + (e.score / base).toFixed(2)})`);
       if (e.type !== 'count') return;
-      if (goal > 1 && e.count === goal - 1) { play(sounds.last); $('status').textContent = '마지막 1회 남았어요.'; }
+      if (goal > 1 && e.count === goal - 1) $('status').textContent = '마지막 1회 남았어요.';
       if (e.count >= goal) { play(sounds.done); stopCount(`${goal}회 완료! (놓침 ${e.miss})`); }
     },
   });
@@ -146,7 +146,7 @@ function draw() {
 // ---------- 시작 ----------
 function init() {
   const saved = store.get();
-  if (saved.sens) $('sens').value = saved.sens;
+  if (saved.sens) $('sens').value = Math.min(1.2, Math.max(0.9, saved.sens));
   $('sens-val').textContent = (+$('sens').value).toFixed(2);
   if (saved.target) $('target').value = saved.target;
   $('target-show').textContent = target();
