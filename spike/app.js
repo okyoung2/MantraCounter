@@ -3,6 +3,7 @@ import { createFeaturizer, makeTemplate, calibrate, createDetector } from './dsp
 
 const $ = id => document.getElementById(id);
 const KEY = 'mantraCounterSpike.v1';
+const MIN_TAKES = 3, MAX_TAKES = 5;
 const store = {
   get() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } },
   set(v) { try { localStorage.setItem(KEY, JSON.stringify({ ...store.get(), ...v })); } catch { /* 저장 안 돼도 동작 */ } },
@@ -37,14 +38,14 @@ async function ensureMic() {
 // ---------- 등록 ----------
 function renderTakes() {
   const now = mode === 'rec' ? takes.length : -1;
-  $('takes').innerHTML = [0, 1, 2].map(i => {
+  $('takes').innerHTML = [0, 1, 2, 3, 4].map(i => {
     const cls = i < takes.length ? 'take done' : i === now ? 'take now' : 'take';
-    const label = i < takes.length ? `✔ ${i + 1}회차<br>${takes[i].sec.toFixed(1)}초` : i === now ? `● ${i + 1}회차<br>녹음 중` : `${i + 1}회차`;
+    const label = i < takes.length ? `✔ ${i + 1}<br>${takes[i].sec.toFixed(1)}초` : i === now ? `● ${i + 1}<br>녹음 중` : `${i + 1}${i >= MIN_TAKES ? '<br>(선택)' : ''}`;
     return `<div class="${cls}">${label}</div>`;
   }).join('');
-  const full = takes.length >= 3;
+  const full = takes.length >= MAX_TAKES;
   $('rec-btn').disabled = full && mode !== 'rec';
-  $('rec-btn').textContent = mode === 'rec' ? '■ 녹음 종료' : full ? '등록 완료' : `● 녹음 시작 (${takes.length + 1}회차)`;
+  $('rec-btn').textContent = mode === 'rec' ? '■ 녹음 종료' : full ? `등록 완료 (${MAX_TAKES}회)` : takes.length >= MIN_TAKES ? `● 녹음 더 하기 (${takes.length + 1}회차, 선택)` : `● 녹음 시작 (${takes.length + 1}회차)`;
   $('rec-btn').className = mode === 'rec' ? 'rec big' : 'primary big';
   $('count-btn').disabled = !templates || mode === 'rec';
 }
@@ -64,7 +65,7 @@ async function toggleRec() {
   if (!t || t.sec < 0.6) { $('enroll-msg').textContent = '소리가 너무 짧거나 작아요. 이번 회차를 다시 녹음해 주세요.'; renderTakes(); return; }
   takes.push({ frames: frames.map(f => ({ c: Array.from(f.c), e: f.e })), sec: t.sec });
   $('enroll-msg').textContent = `${takes.length}회차 녹음 완료 (${t.sec.toFixed(1)}초)`;
-  if (takes.length === 3) buildModel(true);
+  if (takes.length >= MIN_TAKES) buildModel(true);
   renderTakes();
 }
 
@@ -74,7 +75,7 @@ function buildModel(save) {
   base = calibrate(templates, fl);
   if (save) store.set({ takes, sr: ctx?.sampleRate });
   const lens = templates.map(t => t.sec.toFixed(1)).join(' / ');
-  $('enroll-msg').textContent = `등록 완료. 녹음 길이 ${lens}초. 이제 카운트를 시작할 수 있어요.`;
+  $('enroll-msg').textContent = `등록 완료 (${takes.length}회). 녹음 길이 ${lens}초. 이제 카운트를 시작할 수 있어요.`;
   $('status').textContent = '목표 횟수를 정하고 카운트 시작을 눌러 주세요.';
   log(`등록: 길이 ${lens}초, 기준 거리 ${base.toFixed(2)}`);
 }
@@ -150,7 +151,7 @@ function init() {
   $('sens-val').textContent = (+$('sens').value).toFixed(2);
   if (saved.target) $('target').value = saved.target;
   $('target-show').textContent = target();
-  if (Array.isArray(saved.takes) && saved.takes.length === 3) {
+  if (Array.isArray(saved.takes) && saved.takes.length >= MIN_TAKES) {
     takes = saved.takes.map(t => ({ ...t, frames: t.frames.map(f => ({ c: Float32Array.from(f.c), e: f.e })) }));
     buildModel(false);
   }

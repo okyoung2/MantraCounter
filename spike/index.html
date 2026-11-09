@@ -25,8 +25,8 @@ button.big { font-size: 1.2rem; padding: 18px; }
 button.rec { background: var(--danger); color: #fff; }
 button:disabled { opacity: .45; cursor: default; }
 button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.takes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.take { border: 2px dashed var(--line); border-radius: 10px; padding: 10px 6px; text-align: center; font-size: .9rem; color: var(--muted); }
+.takes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.take { border: 2px dashed var(--line); border-radius: 10px; padding: 8px 2px; text-align: center; font-size: .9rem; color: var(--muted); }
 .take.done { border-style: solid; border-color: var(--ok); color: var(--text); }
 .take.now { border-color: var(--danger); color: var(--text); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -57,8 +57,8 @@ button.step { width: 52px; height: 52px; padding: 0; font-size: 1.6rem; font-wei
   <h1>만트라 카운터 <span class="hint">시험판</span></h1>
 
   <section class="card" aria-labelledby="h-enroll">
-    <h2 id="h-enroll">1. 만트라 등록 (3번 녹음)</h2>
-    <p class="hint">휴대폰을 앞에 두고, '녹음 시작' → 만트라를 <b>딱 한 번</b> 외움 → '녹음 종료'. 이렇게 3번 해 주세요.</p>
+    <h2 id="h-enroll">1. 만트라 등록 (3~5번 녹음)</h2>
+    <p class="hint">휴대폰을 앞에 두고, '녹음 시작' → 만트라를 <b>딱 한 번</b> 외움 → '녹음 종료'. 이렇게 3번 하면 등록되고, 2번 더(4·5회차) 하면 더 잘 알아들을 수 있어요. 더 하는 녹음은 <b>실제로 외울 때처럼 휴대폰을 조금 떨어뜨려 놓고</b> 해 보세요.</p>
     <div class="takes" id="takes"></div>
     <button id="rec-btn" class="primary big" type="button">● 녹음 시작</button>
     <button id="reset-btn" type="button">처음부터 다시 녹음</button>
