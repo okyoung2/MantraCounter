@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1712">
+<title>만트라 카운터 시험판</title>
+<style>
+:root {
+  --bg: #1b1712; --surface: #26211a; --line: #3a3228; --text: #f1eadf; --muted: #b3a894;
+  --accent: #d9a441; --accent-text: #1b1712; --danger: #e07a5f; --ok: #8fbf7a; --radius: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Noto Sans KR", sans-serif;
+  padding: 16px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); }
+main { max-width: 520px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-size: 1.3rem; margin: 4px 0 0; }
+h2 { font-size: 1.05rem; margin: 0 0 8px; }
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; }
+.hint { color: var(--muted); font-size: .9rem; margin: 0; }
+button { font: inherit; border: 0; border-radius: var(--radius); padding: 14px 16px; cursor: pointer; background: var(--line); color: var(--text); }
+button.primary { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+button.big { font-size: 1.2rem; padding: 18px; }
+button.rec { background: var(--danger); color: #fff; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.takes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.take { border: 2px dashed var(--line); border-radius: 10px; padding: 10px 6px; text-align: center; font-size: .9rem; color: var(--muted); }
+.take.done { border-style: solid; border-color: var(--ok); color: var(--text); }
+.take.now { border-color: var(--danger); color: var(--text); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chips button { padding: 10px 14px; }
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+input[type=number] { font: inherit; width: 6.5em; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.counter { text-align: center; padding: 8px 0; }
+.count { font-size: 4.5rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.count small { font-size: 1.6rem; color: var(--muted); font-weight: 600; }
+.miss { color: var(--danger); font-size: 1.1rem; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.status { color: var(--muted); font-size: .95rem; min-height: 1.5em; }
+canvas { width: 100%; height: 120px; background: var(--bg); border-radius: 10px; display: block; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.log { font: 12px/1.4 ui-monospace, monospace; color: var(--muted); max-height: 140px; overflow: auto; white-space: pre-wrap; margin: 0; }
+.err { color: var(--danger); margin: 0; }
+</style>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <h1>만트라 카운터 <span class="hint">시험판</span></h1>
+
+  <section class="card" aria-labelledby="h-enroll">
+    <h2 id="h-enroll">1. 만트라 등록 (3번 녹음)</h2>
+    <p class="hint">휴대폰을 앞에 두고, '녹음 시작' → 만트라를 <b>딱 한 번</b> 외움 → '녹음 종료'. 이렇게 3번 해 주세요.</p>
+    <div class="takes" id="takes"></div>
+    <button id="rec-btn" class="primary big" type="button">● 녹음 시작</button>
+    <button id="reset-btn" type="button">처음부터 다시 녹음</button>
+    <p id="enroll-msg" class="hint"></p>
+  </section>
+
+  <section class="card" aria-labelledby="h-count">
+    <h2 id="h-count">2. 카운트</h2>
+    <div class="row chips" id="chips"></div>
+    <div class="row"><label for="target">목표 횟수</label><input id="target" type="number" min="1" max="9999" value="21"><span>회</span></div>
+    <div class="counter">
+      <div class="count"><span id="count">0</span> <small>/ <span id="target-show">21</span></small></div>
+      <div class="miss">놓침 <span id="miss">0</span></div>
+    </div>
+    <button id="count-btn" class="primary big" type="button" disabled>▶ 카운트 시작</button>
+    <p id="status" class="status" aria-live="polite">먼저 만트라를 3번 녹음해 주세요.</p>
+  </section>
+
+  <section class="card" aria-labelledby="h-tune">
+    <h2 id="h-tune">3. 맞춰 보기 (시험용)</h2>
+    <p class="hint">선이 아래로 내려가 초록 선 밑으로 들어가면 1회로 셉니다. 주황 선 사이면 '놓침'. 너무 적게 세면 오른쪽(관대하게), 너무 많이 세면 왼쪽(엄격하게)으로 옮겨 보세요.</p>
+    <div class="row"><span>엄격</span><input id="sens" type="range" min="1.0" max="2.5" step="0.05" value="1.4" style="flex:1"><span>관대</span><b id="sens-val">1.40</b></div>
+    <canvas id="graph" width="600" height="120"></canvas>
+    <div class="legend"><span><i style="background:var(--text)"></i>지금 소리와 만트라의 차이</span><span><i style="background:var(--ok)"></i>1회 기준</span><span><i style="background:var(--accent)"></i>놓침 기준</span></div>
+    <pre id="log" class="log"></pre>
+  </section>
+  <p id="fatal" class="err" hidden></p>
+</main>
+</body>
+</html>
