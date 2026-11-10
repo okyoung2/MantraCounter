@@ -13,6 +13,8 @@ let ctx = null, mode = null, recBuf = [], onSamples = null;
 let takes = [];      // 녹음마다 특징 프레임 배열
 let templates = null, base = null, det = null, wakeLock = null;
 const scores = [];   // 그래프용 최근 점수
+const debugEvents = []; // 디버그: 이번 카운트의 판정 기록 (콘솔에서 mc.events 로 표로 보기: console.table(mc.events))
+window.mc = { get events() { return debugEvents; }, get det() { return det; }, get base() { return base; } };
 const sounds = { done: new Audio('sounds/done.wav') };
 
 function log(msg) { const el = $('log'); el.textContent = `${new Date().toLocaleTimeString()} ${msg}\n` + el.textContent.slice(0, 3000); }
@@ -78,6 +80,7 @@ function buildModel(save) {
   $('enroll-msg').textContent = `등록 완료 (${takes.length}회). 녹음 길이 ${lens}초. 이제 카운트를 시작할 수 있어요.`;
   $('status').textContent = '목표 횟수를 정하고 카운트 시작을 눌러 주세요.';
   log(`등록: 길이 ${lens}초, 기준 거리 ${base.toFixed(2)}`);
+  console.log('[MC] 등록', JSON.stringify({ takes: takes.length, tplSec: templates.map(t => +t.sec.toFixed(2)), base: +base.toFixed(3) }));
 }
 
 function resetTakes() {
@@ -100,13 +103,21 @@ async function toggleCount() {
     templates, base, sens: +$('sens').value,
     onEvent(e) {
       $('count').textContent = e.count; $('miss').textContent = e.miss;
-      log(e.type === 'count' ? `셈 ${e.count}  (차이 ${(e.score / base).toFixed(2)})`
-        : `놓침 ${e.miss}  (${e.reason === 'timeout' ? '소리는 났지만 못 찾음' : '애매함 ' + (e.score / base).toFixed(2)})`);
+      const d = e.debug, n = e.count + e.miss;
+      log((e.type === 'count' ? `셈 ${e.count}  (차이 ${d.rel.toFixed(2)})`
+        : `놓침 ${e.miss}  (${e.reason === 'timeout' ? `소리는 났지만 못 찾음, 가장 가까웠던 ${d.bestRecent ?? '없음'}` : '애매함 ' + d.rel.toFixed(2)})`)
+        + `  [${n}번째, 음색 어긋남 ${d.drift}]`);
+      // PC 크롬 chrome://inspect 에서 보는 자세한 기록
+      console.log(`[MC] ${n}번째 ${e.type === 'count' ? '셈' : '놓침'} ${e.reason}`, JSON.stringify(d));
+      debugEvents.push({ n, type: e.type, reason: e.reason, ...d });
       if (e.type !== 'count') return;
       if (goal > 1 && e.count === goal - 1) $('status').textContent = '마지막 1회 남았어요.';
       if (e.count >= goal) { play(sounds.done); stopCount(`${goal}회 완료! (놓침 ${e.miss})`); }
     },
   });
+  debugEvents.length = 0;
+  console.log('[MC] 카운트 시작', JSON.stringify({ goal, sens: +$('sens').value, base: +base.toFixed(3), sampleRate: ctx.sampleRate,
+    tplSec: templates.map(t => +t.sec.toFixed(2)), takes: takes.length }));
   onSamples = x => { det.push(fz.push(x)); scores.push(det.lastScore); if (scores.length > 400) scores.splice(0, scores.length - 400); };
   scores.length = 0;
   $('count').textContent = '0'; $('miss').textContent = '0';
@@ -120,6 +131,7 @@ async function toggleCount() {
 
 function stopCount(msg) {
   mode = null; onSamples = null;
+  if (debugEvents.length) { console.log('[MC] 카운트 끝:', msg); console.table(debugEvents); }
   $('count-btn').textContent = '▶ 카운트 시작'; $('count-btn').className = 'primary big';
   $('status').textContent = msg; $('reset-btn').disabled = false;
   try { wakeLock?.release(); } catch { /* 무시 */ } wakeLock = null;

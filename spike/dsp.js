@@ -169,16 +169,19 @@ export function createDetector({ templates, base, sens = 1.5, onEvent = () => {}
   const mean = Float32Array.from({ length: N_CEP }, (_, k) => templates.reduce((a, t) => a + t.mean[k], 0) / templates.length);
   const avg = key => templates.reduce((a, t) => a + t[key], 0) / templates.length;
   const voiceThr = Math.max(avg('loud') - 30, avg('floor') + 6);
+  const mean0 = Float32Array.from(mean); // 시작할 때 값(녹음 기준) — 디버그용
   const det = {
-    sens, i: 0, count: 0, miss: 0, lastScore: null,
+    sens, i: 0, count: 0, miss: 0, lastScore: null, nVoiced: 0,
     get thrSure() { return base * det.sens; },
     get thrMaybe() { return base * det.sens * 1.35; },
   };
   let cand = null, lastEnd = -Infinity, anchor = null, lastVoiced = -Infinity;
 
-  function fire(type, reason, score, frame) {
+  function fire(type, reason, score, frame, extra = {}) {
     if (type === 'count') det.count++; else det.miss++;
-    onEvent({ type, reason, score, frame, count: det.count, miss: det.miss });
+    const debug = { rel: score == null ? null : score / base, thrSure: det.sens, thrMaybe: det.sens * 1.35,
+      sec: +(frame * 0.02).toFixed(2), nVoiced: det.nVoiced, drift: +dist(mean, mean0).toFixed(2), ...extra };
+    onEvent({ type, reason, score, frame, count: det.count, miss: det.miss, debug });
   }
 
   det.push = function (frames) {
@@ -186,7 +189,10 @@ export function createDetector({ templates, base, sens = 1.5, onEvent = () => {}
       const i = det.i++;
       const voiced = f.e > voiceThr;
       if (voiced) {
-        for (let k = 0; k < N_CEP; k++) mean[k] += (f.c[k] - mean[k]) / 100;
+        // 처음엔 빨리, 나중엔 천천히 지금 목소리의 평소 음색을 따라간다.
+        // (녹음 기준 값에서 시작하면 첫 회차가 어긋나 놓침이 잦았음)
+        const rate = Math.min(100, 10 + det.nVoiced++);
+        for (let k = 0; k < N_CEP; k++) mean[k] += (f.c[k] - mean[k]) / rate;
         if (anchor === null) anchor = i;
         lastVoiced = i;
       } else if (i - lastVoiced > 25) anchor = null;
@@ -195,19 +201,22 @@ export function createDetector({ templates, base, sens = 1.5, onEvent = () => {}
       let best = null;
       for (const m of matchers) { const r = m.step(x, i); if (r && (!best || r.score < best.score)) best = r; }
       det.lastScore = best ? best.score : null;
+      if (anchor === null) det.minSinceAnchor = null;
+      else if (best && (det.minSinceAnchor == null || best.score < det.minSinceAnchor)) det.minSinceAnchor = best.score;
 
       if (best && best.score < det.thrMaybe && best.start >= lastEnd - 0.3 * M && i - lastEnd >= 0.5 * M) {
-        if (!cand || best.score < cand.score) cand = { score: best.score, frame: i };
+        if (!cand || best.score < cand.score) cand = { score: best.score, frame: i, start: best.start };
       }
       if (cand && i - cand.frame >= 0.3 * M) {
-        if (cand.score < det.thrSure) fire('count', 'match', cand.score, cand.frame);
-        else fire('miss', 'unsure', cand.score, cand.frame);
-        lastEnd = cand.frame; anchor = cand.frame; cand = null;
+        const ex = { lenSec: +((cand.frame - cand.start + 1) * 0.02).toFixed(2), tplSec: +(M * 0.02).toFixed(2) };
+        if (cand.score < det.thrSure) fire('count', 'match', cand.score, cand.frame, ex);
+        else fire('miss', 'unsure', cand.score, cand.frame, ex);
+        lastEnd = cand.frame; anchor = cand.frame; cand = null; det.minSinceAnchor = null;
       }
       // 소리는 계속 나는데 한참 동안 아무것도 못 찾았으면 놓친 것으로 본다
       if (!cand && anchor !== null && i - anchor > 1.9 * M) {
-        fire('miss', 'timeout', null, i);
-        anchor += M; lastEnd = Math.max(lastEnd, anchor);
+        fire('miss', 'timeout', null, i, { bestRecent: det.minSinceAnchor == null ? null : +(det.minSinceAnchor / base).toFixed(2) });
+        anchor += M; lastEnd = Math.max(lastEnd, anchor); det.minSinceAnchor = null;
       }
     }
   };
